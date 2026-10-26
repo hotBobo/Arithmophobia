@@ -2,9 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## How to work with the user
+
+The user is a student learning game design and C++, and is new to C# and Unity. This project is how they are learning, so the goal is their understanding, not just working code.
+
+- Do not write or edit game code (anything under `Assets/Scripts/`, `Assets/Tests/`, scenes, or prefabs) unless the user explicitly asks you to.
+- Instead, guide them. Explain how the existing code works, point to the relevant files and lines, introduce the C# or Unity concept involved (comparing it to C++ where that helps), and suggest the next step so they can write it themselves.
+- When reviewing their code, explain what is wrong and why, and let them make the fix.
+- Editing documentation such as this file is fine when asked.
+
 ## Project
 
-Arithmophobia is a Unity game (Unity 6, editor version `6000.5.9f1`) using URP 17.6 and the new Input System (`com.unity.inputsystem`). The project is early-stage: there is one scene (`Assets/Scenes/SampleScene.unity`) and one script. It is currently in roadmap Phase 1.
+Arithmophobia is a Unity game (Unity 6, editor version `6000.5.9f1`) using URP 17.6 and the new Input System (`com.unity.inputsystem`). The project is early-stage: there is one scene (`Assets/Scenes/SampleScene.unity`), a working equation evaluator with EditMode tests, and a bare-bones prototype keypad controller wired to TextMeshPro. Roadmap Phase 1 (math engine) is partly done, and Phase 2 (UI) has been started as a prototype.
 
 ## Game design (planned, mostly not yet implemented)
 
@@ -33,11 +42,12 @@ A student who struggles with math makes a deal to pass their exams. The presenta
 
 **Roadmap**
 1. **Math engine (pure C#, no UI).**
-   - Equation evaluator: done, see below.
-   - ANS state tracking: not started.
+   - Equation evaluator: done (no unary minus yet), see below.
+   - ANS state tracking: prototype only. `KeypadController` holds `currentAns`; there is no standalone engine-level state.
    - `MathPool` with weighted random selection: not started.
 2. **UI and input.**
-   - Keypad UI with button prefabs spawned per unlocked slot.
+   - Prototype keypad: `KeypadController` exposes `OnDigitPressed`, `OnOperatorPressed`, `OnAnsPressed`, `OnSubmitPressed` for UI buttons and writes to a `TMP_Text`. No parenthesis, clear, or backspace handling yet.
+   - Keypad UI with button prefabs spawned per unlocked slot (not started).
    - Test paper display showing submitted lines and target goals.
    - Flip/re-roll animation for spent buttons.
 3. **Progression and economy.**
@@ -52,23 +62,36 @@ A student who struggles with math makes a deal to pass their exams. The presenta
 
 There is no CLI build setup. Open the project in the Unity Editor (via Unity Hub) to run, build, and test. `Library/`, `Temp/`, `Logs/`, `UserSettings/`, and the generated `*.csproj`/`.slnx` files are Unity-generated, so don't hand-edit them.
 
-The Unity Test Framework (`com.unity.test-framework`) is installed, but no tests exist yet. To run tests headlessly, use `Unity -batchmode -projectPath . -runTests -testPlatform EditMode -quit`.
+The Unity Test Framework (`com.unity.test-framework`) is installed. Tests live in `Assets/Tests/CalcTest.cs` (NUnit, EditMode only) and cover addition, subtraction, divide by zero, syntax error, `ANS`, and parentheses. Run them from the Unity Test Runner window, or headlessly with `Unity -batchmode -projectPath . -runTests -testPlatform EditMode -quit`. Add new tests for any new operator or evaluator behavior.
 
 ## Architecture
 
-`Assets/Scripts/EquationEvaluator.cs` is a pure C# calculator core with no `MonoBehaviour` or Unity dependencies. It evaluates equations built from a `List<Token>` rather than by parsing strings:
+Code is split into two assembly definitions:
+- `Assets/Scripts/Arithmophobia.asmdef` (runtime). It references TextMeshPro by GUID.
+- `Assets/Tests/Tests.asmdef` (Editor-only, `UNITY_INCLUDE_TESTS`). It references `Arithmophobia`, so new runtime code under `Assets/Scripts/` is visible to tests.
 
-- `Token` (struct, with `TokenType` enum): number, operator, `ANS` (the previous result), and parentheses. Create tokens with the `Token.Create*` factories.
-- `EquastionEvaluator.EvaluateTokens(tokens, currentAns)` converts infix to RPN with the shunting-yard algorithm (`ConvertToRPN`), then evaluates it (`CalculateRPN`). It returns an `EvaluationResult` struct with an `EvaluationStatus` (`Success`, `SyntaxError`, `DivideByZero`) and never throws to the caller.
+### `Assets/Scripts/EquationEvaluator.cs`
+
+A pure C# calculator core with no `MonoBehaviour` or Unity dependencies. It evaluates equations built from a `List<Token>` rather than by parsing strings:
+
+- `Token` (struct, with `TokenType` enum): number, operator, `ANS` (the previous result), and left/right parentheses. Create tokens with the `Token.Create*` factories: `CreateNumber`, `CreateOperator`, `CreateAns`, `CreateLeftParen`, `CreateRightParen`.
+- `EquationEvaluator.EvaluateTokens(tokens, currentAns)` converts infix to RPN with the shunting-yard algorithm (`ConvertToRPN`), then evaluates it (`CalculateRPN`). It returns an `EvaluationResult` struct with an `EvaluationStatus` (`Success`, `SyntaxError`, `DivideByZero`) and never throws to the caller.
 - Operators are `+ - * / ^`. `^` is right-associative and has the highest precedence. Precedence and associativity live in `GetPrecedence` and `IsRightAssociative`, so add new operators there and in the `switch` in `CalculateRPN`.
 
-Known quirks in the current code (fix them if you touch the file):
-- The class is spelled `EquastionEvaluator` (typo). Renaming it means updating every caller.
-- `Token.CreateParen` always produces `TokenType.LeftParenthesis`, even for `")"`. Nothing can currently create a `RightParenthesis` token through the factory.
+### `Assets/Scripts/KeypadController.cs`
+
+A `MonoBehaviour` prototype that UI buttons call into. It builds the current `List<Token>`, merges consecutive digits into one number token, tracks `currentAns`, and shows the equation or result in the assigned `TMP_Text equationDisplay`. On submit it evaluates, stores the result as the new `ANS` on success, shows the error message otherwise, and clears the tokens. It is hardcoded for digits, operator strings, and `ANS`. It will need rework for the planned operand and operator pools, random key morphing, and GPA and score tracking.
+
+### Known quirks (fix them if you touch the file)
+
 - `CalculateRPN` has no `default` case for unknown operator symbols, so an unrecognized symbol silently drops the operands.
 - Unary minus is not supported. `-3` fails with "Missing Operands".
+- `KeypadController` has no way to enter parentheses, even though the evaluator supports them.
+- `CalcTest.cs` still contains the template `UnityTest` stub (`CalcTestWithEnumeratorPasses`), which asserts nothing.
 
 ## Repo notes
 
 - Commit `.meta` files together with their assets, because Unity GUIDs depend on them.
+- `Assets/TextMesh Pro/` is the stock TMP import (examples and fonts). It is not game code.
+- `Assets/_Recovery/` is an untracked Unity scene-recovery folder (autosave from a crash). Don't commit it.
 - Unity config in `ProjectSettings/` and `Assets/Settings/` is checked in. Expect diffs there when the editor is opened, and avoid committing unintended editor-driven changes.
