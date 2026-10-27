@@ -1,7 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 
 public enum TokenType
 {
@@ -14,8 +11,11 @@ public enum TokenType
 
 public struct Token
 {
+    // Type of token (Num, Op, Ans, etc)
     public readonly TokenType Type;
+    // Value of token (val for num, else 0)
     public readonly double Value;
+    // Symbol that will be shown from token (unique for all diff tokens)
     public readonly string Symbol;
 
     public Token(TokenType type, double value=0, string symbol="")
@@ -32,7 +32,7 @@ public struct Token
         new Token(TokenType.Operator, 0, opSymbol);
 
     public static Token CreateAns() =>
-        new Token(TokenType.Ans);
+        new Token(TokenType.Ans); // Must fix to make it declared here
 
     public static Token CreateLeftParen() =>
         new Token(TokenType.LeftParenthesis, 0, "(");

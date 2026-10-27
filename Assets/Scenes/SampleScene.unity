@@ -2308,7 +2308,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 846512930}
         m_TargetAssemblyTypeName: KeypadController, Arithmophobia
-        m_MethodName: OnAnsPressed
+        m_MethodName: OnLParPressed
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -5584,7 +5584,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 846512930}
         m_TargetAssemblyTypeName: KeypadController, Arithmophobia
-        m_MethodName: OnAnsPressed
+        m_MethodName: OnRParPressed
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
