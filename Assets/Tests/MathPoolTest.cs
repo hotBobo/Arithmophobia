@@ -1,11 +1,14 @@
-using System.Collections;
-using System.Collections.Generic;
 using NUnit.Framework;
-using UnityEngine.TestTools;
 
 public class MathPoolTest
 {
-    System.Random rand = new System.Random(67);
+    System.Random rand;
+
+    [SetUp]
+    public void Init()
+    {
+        rand = new System.Random(67);
+    }
 
     [Test]
     public void OneEntryReturned()
@@ -15,7 +18,7 @@ public class MathPoolTest
         
         Token result = mathPool.DrawKey();
 
-        Assert.AreEqual(result.Symbol, Token.CreateNumber(2).Symbol);
+        Assert.AreEqual(Token.CreateNumber(2).Symbol, result.Symbol);
     }
 
     [Test]
@@ -28,9 +31,12 @@ public class MathPoolTest
         mathPool.AddKey(Token.CreateNumber(3));
         mathPool.AddKey(Token.CreateNumber(3), -1);
         
-        Token result = mathPool.DrawKey();
+        for(int i = 0; i < 100; ++i)
+        {
+            Token result = mathPool.DrawKey();
+            Assert.AreNotEqual(Token.CreateNumber(3).Symbol, result.Symbol); 
+        }
 
-        Assert.AreNotEqual(result.Symbol, Token.CreateNumber(3).Symbol);
         Assert.AreEqual(0, mathPool.GetWeight(Token.CreateNumber(3)));
     }
 
@@ -41,25 +47,19 @@ public class MathPoolTest
         mathPool.AddKey(Token.CreateNumber(2));
         mathPool.AddKey(Token.CreateNumber(4));
         mathPool.AddKey(Token.CreateNumber(4));
+        mathPool.AddKey(Token.CreateNumber(6), 7);
         
-
-        Assert.AreEqual(2, mathPool.GetWeight(Token.CreateNumber(4)));
         Assert.AreEqual(1, mathPool.GetWeight(Token.CreateNumber(2)));
+        Assert.AreEqual(2, mathPool.GetWeight(Token.CreateNumber(4)));
+        Assert.AreEqual(7, mathPool.GetWeight(Token.CreateNumber(6)));
+        
     }
 
     [Test]
     public void WeightsAreWeightedCorrectly()
     {
         var mathPool = new MathPool(rand);
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
-        mathPool.AddKey(Token.CreateNumber(2));
+        mathPool.AddKey(Token.CreateNumber(2), 9);
         mathPool.AddKey(Token.CreateNumber(3));
 
         int count = 0;
@@ -77,6 +77,10 @@ public class MathPoolTest
     {
         var mathPool = new MathPool(rand);
 
+        Assert.Throws<System.InvalidOperationException>(() => mathPool.DrawKey());
+
+        mathPool.AddKey(Token.CreateNumber(3), 0);
+        
         Assert.Throws<System.InvalidOperationException>(() => mathPool.DrawKey());
     }
 };
