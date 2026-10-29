@@ -108,6 +108,12 @@ public class CalcTest
         Assert.AreEqual(11, result.Value); // 2 + 3 * (4 - 1) = 2 + 3 * 3 = 2 + 9 = 11
     }
 
+    [Test]
+    public void SameTokensEqual()
+    {
+        Assert.AreEqual(Token.CreateNumber(2), Token.CreateNumber(2));
+        Assert.AreNotEqual(Token.CreateNumber(2), Token.CreateNumber(3));
+    }
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
     // `yield return null;` to skip a frame.

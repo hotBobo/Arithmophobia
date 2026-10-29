@@ -18,7 +18,7 @@ public class MathPoolTest
         
         Token result = mathPool.DrawKey();
 
-        Assert.AreEqual(Token.CreateNumber(2).Symbol, result.Symbol);
+        Assert.AreEqual(Token.CreateNumber(2), result);
     }
 
     [Test]
@@ -34,7 +34,7 @@ public class MathPoolTest
         for(int i = 0; i < 100; ++i)
         {
             Token result = mathPool.DrawKey();
-            Assert.AreNotEqual(Token.CreateNumber(3).Symbol, result.Symbol); 
+            Assert.AreNotEqual(Token.CreateNumber(3), result); 
         }
 
         Assert.AreEqual(0, mathPool.GetWeight(Token.CreateNumber(3)));
@@ -66,7 +66,7 @@ public class MathPoolTest
         for(int i = 0; i < 10000; ++i)
         {
             Token result = mathPool.DrawKey();
-            if (result.Symbol == Token.CreateNumber(2).Symbol) ++count;
+            if (result == Token.CreateNumber(2)) ++count;
         }
 
         Assert.That(count, Is.InRange(8700, 9300));

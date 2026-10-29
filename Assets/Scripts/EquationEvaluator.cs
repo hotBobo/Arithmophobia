@@ -9,7 +9,7 @@ public enum TokenType
     RightParenthesis
 }
 
-public struct Token
+public struct Token : System.IEquatable<Token>
 {
     // Type of token (Num, Op, Ans, etc)
     public readonly TokenType Type;
@@ -17,6 +17,28 @@ public struct Token
     public readonly double Value;
     // Symbol that will be shown from token (unique for all diff tokens)
     public readonly string Symbol;
+
+    public bool Equals(Token other)
+    {
+        return Type == other.Type && Symbol == other.Symbol;
+        
+    }
+    public override bool Equals(object obj)
+    {
+        return obj is Token other && Equals(other);
+    }
+    public override int GetHashCode()
+    {
+        return System.HashCode.Combine(Type,Symbol);
+    }
+    public static bool operator ==(Token a, Token b)
+    {
+        return a.Equals(b);
+    }
+    public static bool operator !=(Token a, Token b)
+    {
+        return !(a==b);
+    }
 
     public Token(TokenType type, double value=0, string symbol="")
     {

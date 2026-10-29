@@ -20,21 +20,17 @@ class WeightedEntry{
 }
 public class MathPool
 {
-    public MathPool()
+    public MathPool(System.Random random = null)
     {
         weightedKeys = new List<WeightedEntry>();
-    }
-    public MathPool(System.Random random)
-    {
-        weightedKeys = new List<WeightedEntry>();
-        rng = random;
+        rng = random ?? new System.Random();
     }
     // Add num Keys to our pool. If alr exists, then increment its weight by num
     public void AddKey(Token token, int num=1)
     {
         for (int i = 0; i < weightedKeys.Count; ++i)
         {
-            if (weightedKeys[i].EntryToken.Symbol == token.Symbol)
+            if (weightedKeys[i].EntryToken == token)
             {
                 totalWeight += weightedKeys[i].IncrementWeight(num);
                 return;
@@ -64,14 +60,30 @@ public class MathPool
     {
         for(int i = 0; i < weightedKeys.Count; ++i)
         {
-            if (weightedKeys[i].EntryToken.Symbol == token.Symbol)
+            if (weightedKeys[i].EntryToken == token)
             {
                 return weightedKeys[i].Weight;
             }
         }
         return 0;
     }
+    public static MathPool CreateDefaultOperands(System.Random rand = null)
+    {
+        MathPool temp = new MathPool(rand);
+        for(int i = 0; i < 10; ++i)
+            temp.AddKey(Token.CreateNumber(i));
+        return temp;
+    }
+    public static MathPool CreateDefaultOperators(System.Random rand = null)
+    {
+        MathPool temp = new MathPool(rand);
+        temp.AddKey(Token.CreateOperator("+"), 2);
+        temp.AddKey(Token.CreateOperator("-"), 2);
+        temp.AddKey(Token.CreateOperator("*"));
+        temp.AddKey(Token.CreateOperator("/"));
+        return temp;
+    }
     private List<WeightedEntry> weightedKeys;
     private int totalWeight = 0;
-    System.Random rng = new System.Random();
+    System.Random rng;
 }
