@@ -10,6 +10,10 @@ public class KeySlot
     {
         IsSpent = true;
     }
+    public void UnSpend()
+    {
+        IsSpent = false;
+    }
     public void Replace(Token token)
     {
         IsSpent = false;
@@ -57,6 +61,7 @@ public class KeyHand
     {
         return operandHand[slot].IsSpent;
     }    
+    // Replace all spent keys with Random one from MathPool
     public void Refresh()
     {
         foreach(KeySlot key in operatorHand)
@@ -64,10 +69,17 @@ public class KeyHand
         foreach(KeySlot key in operandHand)
             if (key.IsSpent) key.Replace(operandPool.DrawKey());
     }
+    public void UnspendAll()
+    {
+        foreach(KeySlot key in operatorHand)
+            key.UnSpend();
+        foreach(KeySlot key in operandHand)
+            key.UnSpend();
+    }
     private List<KeySlot> operatorHand;
     private List<KeySlot> operandHand;
     private MathPool operatorPool;
     private MathPool operandPool;
-    private int operatorHandSize = 2;
-    private int operandHandSize = 6;
+    public int operatorHandSize {get; private set;} = 2;
+    public int operandHandSize {get; private set;} = 6;
 }

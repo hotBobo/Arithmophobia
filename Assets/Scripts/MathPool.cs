@@ -79,8 +79,6 @@ public class MathPool
         MathPool temp = new MathPool(rand);
         temp.AddKey(Token.CreateOperator("+"), 2);
         temp.AddKey(Token.CreateOperator("-"), 2);
-        temp.AddKey(Token.CreateOperator("*"));
-        temp.AddKey(Token.CreateOperator("/"));
         return temp;
     }
     private List<WeightedEntry> weightedKeys;

@@ -13,7 +13,7 @@ The user is a student learning game design and C++, and is new to C# and Unity. 
 
 ## Project
 
-Arithmophobia is a Unity game (Unity 6, editor version `6000.5.9f1`) using URP 17.6 and the new Input System (`com.unity.inputsystem`). The project is early-stage: there is one scene (`Assets/Scenes/SampleScene.unity`), a working equation evaluator with EditMode tests, and a bare-bones prototype keypad controller wired to TextMeshPro. Roadmap Phase 1 (math engine) is partly done, and Phase 2 (UI) has been started as a prototype.
+Arithmophobia is a Unity game (Unity 6, editor version `6000.5.9f1`) using URP 17.6 and the new Input System (`com.unity.inputsystem`). The project is early-stage: there is one scene (`Assets/Scenes/SampleScene.unity`) with a playable prototype round. It has a working equation evaluator, a weighted `MathPool`, a `KeyHand` of spendable keys, a `Round` tracking target and submissions, and a `KeypadController` that ties them to hand-placed TextMeshPro buttons. Tests exist for the evaluator and `MathPool`. Roadmap Phase 1 (math engine) is mostly done, Phase 2 (UI) is a prototype, and Phase 3 (GPA, shop) has not started.
 
 ## Game design (planned, mostly not yet implemented)
 
@@ -21,10 +21,18 @@ A student who struggles with math makes a deal to pass their exams. The presenta
 
 **Core loop**
 - Each question starts with a keypad grid of operands (digits, constants such as π and e, special tiles such as negative numbers) and operators.
-- The player builds an equation from the available keys and submits it. It is evaluated with standard PEMDAS, and the result adds to the stage score.
+- The player builds an equation from the available keys and submits it. It is evaluated with standard PEMDAS.
+- A key can be pressed once per equation. Pressing it spends it (the button greys out). On a successful submit, spent keys morph into new keys drawn at random from the player's pool, and unused keys stay on the keypad.
+- A failed equation (syntax error or divide by zero) does not use up a submission, and the spent keys are restored instead of redrawn.
 - `ANS` carries the previous answer into the next equation, so answers can scale exponentially.
-- Keys that were used morph into new keys drawn at random from the player's pool. Unused keys stay on the keypad.
-- The keypad must always show at least one basic operator (`+` or `-`) so the player can't get softlocked.
+
+**Round rules**
+- Answers do not accumulate into a score. Each round has a target, and only the **last** answer (the current `ANS`) counts. That is the risk: a later, worse answer replaces a better one.
+- Each round has a limited number of submissions. Reaching the target does not end the round.
+- The round ends when the player presses **Turn In**, or automatically when submissions run out, using the current answer. It is a win if that answer is at or above the target, and a loss otherwise.
+- The player chooses between turning in a safe answer and spending more submissions to aim higher.
+- Open questions: whether Turn In is allowed below the target (counts as a loss) or disabled until the target is reached, and whether "exact" uses a small tolerance (it should, since the evaluator works in `double`).
+- Not yet implemented: `Round.cs` still ends the round as soon as an answer reaches the target, and has no Turn In. It needs reworking to match the rules above.
 
 **Pools**
 - The operand pool is a custom bag of digits, constants, and special tiles.
@@ -33,7 +41,9 @@ A student who struggles with math makes a deal to pass their exams. The presenta
 
 **GPA economy**
 - GPA is capped at 4.00. Falling below 2.00 means Academic Probation, which is game over.
-- Completing a test page earns +0.10 (C grade) up to +0.50 (A+, for doubling the target score).
+- Winning a round earns a base GPA that depends on the round type: +0.20 (small), +0.30 (big), +0.40 (boss).
+- Bonuses: +0.50 for an exact match on the target, and +0.10 for each submission left unused at turn-in. More bonus ideas are being considered, and the numbers are placeholders to tune. Keep them as named constants.
+- GPA calculation lives outside `Round`. `Round` only reports the facts (final answer, target, submissions left, status).
 - Shop purchases cost GPA (for example −0.40). Purchases include permanent keypad hardware upgrades, desk items, and deck-thinning ("White-Out").
 
 **Test structure**
@@ -43,15 +53,17 @@ A student who struggles with math makes a deal to pass their exams. The presenta
 **Roadmap**
 1. **Math engine (pure C#, no UI).**
    - Equation evaluator: done (no unary minus yet), see below.
-   - ANS state tracking: prototype only. `KeypadController` holds `currentAns`; there is no standalone engine-level state.
-   - `MathPool` with weighted random selection: not started.
+   - ANS state tracking: done, held in `Round.CurrentAns`.
+   - `MathPool` with weighted random selection: done, with tests.
+   - `KeyHand` (spendable key slots drawn from the pools): done, no tests yet.
+   - `Round` (target, submissions, status): started. Needs the Turn In rule and tests.
 2. **UI and input.**
-   - Prototype keypad: `KeypadController` exposes `OnDigitPressed`, `OnOperatorPressed`, `OnAnsPressed`, `OnSubmitPressed` for UI buttons and writes to a `TMP_Text`. No parenthesis, clear, or backspace handling yet.
-   - Keypad UI with button prefabs spawned per unlocked slot (not started).
+   - Keypad: `KeypadController` handles operand, operator, `ANS`, parenthesis, and submit buttons, and shows target, answer, and submissions left. No clear or backspace handling yet, and no Turn In button.
+   - Keypad UI with button prefabs spawned per slot (not started). Buttons are currently placed by hand, and the Inspector arrays must match the hand sizes.
    - Test paper display showing submitted lines and target goals.
    - Flip/re-roll animation for spent buttons.
 3. **Progression and economy.**
-   - `GameManager` for GPA, target scores, and the loss condition.
+   - `GameManager` for GPA, round targets and submission counts, grade and bonus calculation, and the loss condition.
    - Desk Shop UI and purchase logic.
    - Test flow manager for question → shop → boss transitions.
 4. **Boss modifiers and polish.**
@@ -62,7 +74,7 @@ A student who struggles with math makes a deal to pass their exams. The presenta
 
 There is no CLI build setup. Open the project in the Unity Editor (via Unity Hub) to run, build, and test. `Library/`, `Temp/`, `Logs/`, `UserSettings/`, and the generated `*.csproj`/`.slnx` files are Unity-generated, so don't hand-edit them.
 
-The Unity Test Framework (`com.unity.test-framework`) is installed. Tests live in `Assets/Tests/CalcTest.cs` (NUnit, EditMode only) and cover addition, subtraction, divide by zero, syntax error, `ANS`, and parentheses. Run them from the Unity Test Runner window, or headlessly with `Unity -batchmode -projectPath . -runTests -testPlatform EditMode -quit`. Add new tests for any new operator or evaluator behavior.
+The Unity Test Framework (`com.unity.test-framework`) is installed. Tests are NUnit, EditMode only. `Assets/Tests/CalcTest.cs` covers the evaluator (addition, subtraction, divide by zero, syntax error, `ANS`, parentheses). `Assets/Tests/MathPoolTest.cs` covers `MathPool` (single entry, zero weight, weight raising, a seeded frequency check, empty pool). `KeyHand`, `Round`, and `Token` equality have no tests yet. Run them from the Unity Test Runner window, or headlessly with `Unity -batchmode -projectPath . -runTests -testPlatform EditMode -quit`. Add new tests for any new operator or evaluator behavior.
 
 ## Architecture
 
@@ -78,15 +90,29 @@ A pure C# calculator core with no `MonoBehaviour` or Unity dependencies. It eval
 - `EquationEvaluator.EvaluateTokens(tokens, currentAns)` converts infix to RPN with the shunting-yard algorithm (`ConvertToRPN`), then evaluates it (`CalculateRPN`). It returns an `EvaluationResult` struct with an `EvaluationStatus` (`Success`, `SyntaxError`, `DivideByZero`) and never throws to the caller.
 - Operators are `+ - * / ^`. `^` is right-associative and has the highest precedence. Precedence and associativity live in `GetPrecedence` and `IsRightAssociative`, so add new operators there and in the `switch` in `CalculateRPN`.
 
+`Token` has custom equality: two tokens are equal when their `Type` and `Symbol` match (`Equals`, `GetHashCode`, `==`, `!=`). `Value` is deliberately ignored, since comparing doubles is fragile.
+
+### `Assets/Scripts/MathPool.cs`
+
+Pure C#. A weighted bag of `Token`s, stored as a `List<WeightedEntry>` (`WeightedEntry` is a class, because mutating a struct inside a `List` would change a copy). `AddKey(token, num)` adds a token or raises its weight, and weights never go below zero. `DrawKey()` does a weighted pick from a running total and throws `InvalidOperationException` if the total weight is 0. The constructor takes an optional `System.Random` so tests can seed it. `CreateDefaultOperands` (digits 0 to 9) and `CreateDefaultOperators` build the starting pools. The default operator pool still includes `*` and `/`, which the design says are shop unlocks.
+
+### `Assets/Scripts/KeyHand.cs`
+
+Pure C#. `KeyHand` owns the operand and operator pools and a `List<KeySlot>` for each (6 operand slots and 2 operator slots by default). `KeySlot` is a class holding a `Token` and an `IsSpent` flag. Slots are addressed by index, never by token, because two slots can hold the same key. `Spend*` marks a slot spent, `Refresh()` redraws only spent slots, and `UnspendAll()` restores spent slots without redrawing (used on a failed equation). The hand has no softlock guarantee. A hand with no `+` or `-` is allowed.
+
+### `Assets/Scripts/Round.cs`
+
+Pure C#. `Round` holds the target, `SubmissionsLeft`, `CurrentAns` (the last successful answer), and a `RoundStatus` (`InProgress`, `Won`, `Lost`). It is still on the old rule (see Round rules above) and does not yet ignore submissions after the round ends.
+
 ### `Assets/Scripts/KeypadController.cs`
 
-A `MonoBehaviour` prototype that UI buttons call into. It builds the current `List<Token>`, merges consecutive digits into one number token, tracks `currentAns`, and shows the equation or result in the assigned `TMP_Text equationDisplay`. On submit it evaluates, stores the result as the new `ANS` on success, shows the error message otherwise, and clears the tokens. It is hardcoded for digits, operator strings, and `ANS`. It will need rework for the planned operand and operator pools, random key morphing, and GPA and score tracking.
+A `MonoBehaviour` that UI buttons call into. It creates a `KeyHand` and a `Round` in `Start()`, builds the current `List<Token>`, merges consecutive operand tokens into one number (this assumes plain digits), and shows the equation, target, answer, and submissions left in assigned `TMP_Text` fields. Operand and operator buttons come from public `Button[]` arrays filled in the Inspector, and a button's index is its slot. `RefreshAllStates()` pushes the hand and round state into the UI. On a successful submit it passes the result to the `Round` and refreshes the hand. On an error it restores the spent keys. It still has a separate `roundDone` bool that duplicates `Round.Status`, and the win/lose and GPA handling are placeholder comments.
 
 ### Known quirks (fix them if you touch the file)
 
 - `CalculateRPN` has no `default` case for unknown operator symbols, so an unrecognized symbol silently drops the operands.
 - Unary minus is not supported. `-3` fails with "Missing Operands".
-- `KeypadController` has no way to enter parentheses, even though the evaluator supports them.
+- The Inspector button arrays in `KeypadController` must be sized to match `KeyHand`'s slot counts. A mismatch is logged in `Start()`, but the log runs after the first refresh, which throws first.
 - `CalcTest.cs` still contains the template `UnityTest` stub (`CalcTestWithEnumeratorPasses`), which asserts nothing.
 
 ## Repo notes
